@@ -1,36 +1,228 @@
-<div class="panel">
-  <div class="panel-title">Active cards</div>
-  <div id="cardsFullList"></div>
-</div>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mono Wallet Demo</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
 
-<div class="panel">
-  <div class="row between">
-    <div class="panel-title">Create a virtual card</div>
-    <button class="primary" id="btnToggleCreateCard" type="button">+ Create</button>
+  <div class="app">
+    <!-- DASHBOARD -->
+    <section id="view-dashboard" class="view">
+      <div class="topbar">
+        <div class="topbar-title" id="helloText">Hello!</div>
+      </div>
+
+      <div class="balance-card">
+        <div class="balance-row">
+          <div class="balance-left">
+            <div class="currency-line">
+              <span class="flag">co</span>
+              <span class="currency">COP</span>
+            </div>
+            <div class="account-mask" id="accountMask">••••9780</div>
+            <div class="balance-label">Balance</div>
+            <div class="balance-amount" id="balanceAmount">$ 0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Actions</div>
+        <div class="actions">
+          <button class="action-btn" id="btnGoSend" type="button">
+            <div class="action-ic">↗</div>
+            <div class="action-tx">Send</div>
+          </button>
+
+          <button class="action-btn" id="btnGoCards" type="button">
+            <div class="action-ic">▦</div>
+            <div class="action-tx">Card</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">My Cards</div>
+          <button class="link" id="btnMoreCards" type="button">More ›</button>
+        </div>
+        <div id="cardsShortList"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Activity</div>
+          <button class="link" id="btnMoreActivity" type="button">More ›</button>
+        </div>
+        <div id="activityShortList"></div>
+      </div>
+
+      <div class="footer-actions">
+        <button class="ghost" id="btnRefresh" type="button">Refresh</button>
+        <button class="ghost" id="btnTopupQuick" type="button">Topup +$50.000</button>
+      </div>
+    </section>
+
+    <!-- ACTIVITY -->
+    <section id="view-activity" class="view hidden">
+      <div class="topbar">
+        <button class="back" id="backFromActivity" type="button">‹</button>
+        <div class="topbar-title">Activity</div>
+      </div>
+
+      <div class="panel">
+        <div id="activityFullList"></div>
+      </div>
+    </section>
+
+    <!-- CARDS -->
+    <section id="view-cards" class="view hidden">
+      <div class="topbar">
+        <button class="back" id="backFromCards" type="button">‹</button>
+        <div class="topbar-title">My Cards</div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Active cards</div>
+        <div id="cardsFullList"></div>
+      </div>
+
+      <div class="panel">
+        <div class="row between">
+          <div class="panel-title">Create a virtual card</div>
+          <button class="primary" id="btnToggleCreateCard" type="button">+ Create</button>
+        </div>
+
+        <div id="createCardForm" class="hidden" style="margin-top:14px;">
+          <label>Card program</label>
+          <select id="cfgGroupSelect"></select>
+
+          <div id="cfgGroupCustomWrap" class="hidden">
+            <label style="margin-top:12px;">Custom program ID</label>
+            <input id="cfgGroupCustom" placeholder="Paste ccg_... here" />
+          </div>
+
+          <div class="hint">
+            This is the <b>configuration group</b> (ccg_...) that defines the card settings.
+          </div>
+
+          <label style="margin-top:12px;">Card name (optional)</label>
+          <input id="cardNickname" placeholder="e.g. Mamá / Travel / Subscriptions" />
+
+          <!-- Hidden technical field -->
+          <input id="cardAccountId" type="hidden" />
+
+          <div class="row" style="margin-top:14px;">
+            <button class="primary" id="btnCreateCard" type="button">Create card</button>
+            <button class="ghost" id="btnCancelCreateCard" type="button">Cancel</button>
+            <button class="ghost" id="btnReloadCards" type="button">Reload</button>
+          </div>
+
+          <div class="hint" style="margin-top:10px;">
+            Tip: this will create and associate a <b>virtual</b> card so it appears in the list.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEND -->
+    <section id="view-send" class="view hidden">
+      <div class="topbar">
+        <button class="back" id="backFromSend" type="button">‹</button>
+        <div class="topbar-title">Confirm the details</div>
+      </div>
+
+      <div class="confirm-card">
+        <div class="confirm-amount" id="confirmAmount">$ 10.000</div>
+        <div class="confirm-to">To <span id="recipientLabel">Account B</span></div>
+        <div class="pill">
+          <span class="flag">co</span>
+          <span id="recipientMask">••••1234</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <label>Recipient</label>
+        <select id="recipientSelect"></select>
+
+        <label>Recipient name (optional)</label>
+        <input id="recipientNameInput" placeholder="e.g. Mamá" />
+
+        <div class="row">
+          <button class="ghost" id="btnSaveRecipient" type="button">Save recipient</button>
+        </div>
+
+        <label>Amount (COP)</label>
+        <input id="sendAmountInput" type="number" min="1" placeholder="10000" />
+
+        <label>Message</label>
+        <input id="sendMessageInput" placeholder="Message (optional)" />
+
+        <label>Receiving account (advanced)</label>
+        <input id="sendToAccountInput" placeholder="lacc_..." />
+
+        <div class="row" style="margin-top:14px;">
+          <button class="primary wide" id="btnSendNow" type="button">Send money</button>
+        </div>
+        <button class="link danger" id="btnCancelSend" type="button">Cancel</button>
+      </div>
+    </section>
   </div>
 
-  <div id="createCardForm" class="hidden" style="margin-top:14px;">
-    <label>Card program (Configuration)</label>
-    <input id="cfgGroupId" placeholder="Paste your ccg_... here" />
+  <!-- RECEIPT MODAL -->
+  <div id="modalOverlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title" id="receiptAmount">COP $ -400,00</div>
+        <button class="modal-close" id="modalClose" type="button">×</button>
+      </div>
 
-    <div class="hint">
-      Use the configuration group ID provided in the sandbox (example: <b>ccg_02zKnMXeCB3eYDFHxTHe9j</b>)
-    </div>
+      <div class="modal-sub" id="receiptDate">—</div>
 
-    <label>Card name (optional)</label>
-    <input id="cardNickname" placeholder="e.g. Mom Expenses / Travel / Subscriptions" />
+      <div class="modal-section">
+        <div class="modal-section-title">Message</div>
+        <div class="modal-input" id="receiptMessage">—</div>
+      </div>
 
-    <!-- Hidden technical fields -->
-    <input id="cardAccountId" type="hidden" />
+      <div class="modal-section">
+        <div class="modal-section-title">Recipient details</div>
 
-    <div class="row" style="margin-top:14px;">
-      <button class="primary" id="btnCreateCard" type="button">Create card</button>
-      <button class="ghost" id="btnCancelCreateCard" type="button">Cancel</button>
-      <button class="ghost" id="btnReloadCards" type="button">Reload</button>
-    </div>
+        <div class="kv">
+          <div class="k">Recipient</div>
+          <div class="v" id="receiptRecipientName">—</div>
+        </div>
 
-    <div class="hint" style="margin-top:10px;">
-      Tip: this will create and associate a <b>virtual</b> card to your wallet so it appears in the list.
+        <div class="kv">
+          <div class="k">Account</div>
+          <div class="v" id="receiptAccount">—</div>
+        </div>
+
+        <div class="kv">
+          <div class="k">Currency</div>
+          <div class="v">COP</div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">Transaction details</div>
+        <div class="kv">
+          <div class="k">Transaction ID</div>
+          <div class="v" id="receiptTxId">—</div>
+        </div>
+        <div class="kv">
+          <div class="k">Status</div>
+          <div class="v status success" id="receiptStatus">Success</div>
+        </div>
+      </div>
     </div>
   </div>
-</div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast hidden">Saved</div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
