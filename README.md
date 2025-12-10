@@ -1,19 +1,32 @@
-# Mono Wallet Demo (HTML/CSS/JS + Netlify Functions)
+# Mono Wallet Demo (Netlify + Vanilla JS)
 
-## What it includes
-- Dashboard: balance (COP), quick actions, cards preview, activity preview.
-- Activity page: list of recent movements (best-effort from API + local fallback).
-- Cards page: list active cards + create a virtual card via API.
-- Send money: confirm screen + Success receipt modal with transaction id.
+A simple wallet dashboard demo that matches Mono UI style.
+
+## Features
+- Dashboard: balance, quick actions, cards, activity
+- Activity: grouped by date + in/out arrow icons
+- Cards: list active cards + create a virtual card (API)
+- Send money: choose saved recipients (e.g. "Mamá"), confirm, and show success receipt modal
+
+## Demo UI mode
+This project uses **UI demo data** for a realistic look (balance/cards/activity),
+while still executing real API calls for:
+- Topup (fund account)
+- Transfer (account-to-account)
+- Create virtual card
+
+You can change this in `app.js`:
+- `const DEMO_UI = true;`
 
 ## Deploy (Netlify)
-1. Push this repo to GitHub.
-2. Create a new site in Netlify from GitHub.
-3. Add Environment Variables:
-   - `MONO_API_KEY` = your sandbox token (DO NOT commit it).
-   - Optional: `MONO_BASE_URL` = `https://api.sandbox.cuentamono.com`
+Environment variables needed:
+- `MONO_API_KEY` = your sandbox token (sandbox_...)
+Optional:
+- `MONO_BASE_URL` = https://api.sandbox.cuentamono.com
 
-## Local
-You can use any static server for the front.
-To run functions locally, use Netlify CLI (`netlify dev`) if you want.
-
+## API endpoints used
+- GET `/v1/cards`
+- GET `/v1/ledger/accounts/{account_id}/balances`
+- POST `/v1/ledger/accounts/{account_id}/balance` (topup)
+- POST `/v1/ledger/transfers`
+- POST `/v1/ledger/cards`
