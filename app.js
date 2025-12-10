@@ -583,10 +583,18 @@ async function createCard() {
 async function sendMoney() {
   const amount = Number($("#sendAmountInput").value || 0);
   const receiving_account_id = $("#sendToAccountInput").value.trim();
-  const description = ($("#sendMessageInput").value || "").trim() || "Transfer XYZ";
+  const messageInput = ($("#sendMessageInput").value || "").trim();
 
   if (!amount || amount <= 0) throw new Error("Invalid amount");
   if (!receiving_account_id) throw new Error("Missing receiving account");
+
+  // Find recipient name (e.g., "Mamá")
+  const recipients = getRecipients();
+  const found = recipients.find(r => r.account_id === receiving_account_id);
+  const recipientName = found?.name || "destinatario";
+
+  // Default description if user didn't type a message
+  const description = messageInput || `Transferencia a ${recipientName}`;
 
   const external_id = crypto.randomUUID();
 
@@ -706,3 +714,4 @@ window.addEventListener("load", async () => {
     toast(e.message);
   }
 });
+
