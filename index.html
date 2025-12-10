@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mono Wallet Demo</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="mono-logo">mono</div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- DASHBOARD -->
+    <section id="view-dashboard" class="view">
+      <div class="hello" id="helloText">Hello!</div>
+
+      <div class="balance-card">
+        <div class="balance-left">
+          <div class="balance-meta">
+            <div class="flag">🇨🇴</div>
+            <div class="currency">COP</div>
+          </div>
+          <div class="account-mask" id="accountMask">••••</div>
+          <div class="balance-title">Balance</div>
+          <div class="balance-amount" id="balanceAmount">$ 0</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Actions</div>
+        <div class="actions">
+          <button class="action-btn" id="btnGoSend" aria-label="Send">
+            <div class="action-ico">↗</div>
+            <div class="action-label">Send</div>
+          </button>
+
+          <button class="action-btn" id="btnGoCards" aria-label="Cards">
+            <div class="action-ico">▦</div>
+            <div class="action-label">Card</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">My Cards</div>
+          <button class="link" id="btnMoreCards">More <span class="chev">›</span></button>
+        </div>
+        <div id="cardsShortList" class="list"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Activity</div>
+          <button class="link" id="btnMoreActivity">More <span class="chev">›</span></button>
+        </div>
+        <div id="activityShortList" class="list"></div>
+      </div>
+
+      <div class="dev-tools">
+        <button class="ghost" id="btnRefresh">Refresh</button>
+        <button class="ghost" id="btnTopupQuick">Topup +$50.000</button>
+      </div>
+    </section>
+
+    <!-- ACTIVITY -->
+    <section id="view-activity" class="view hidden">
+      <div class="page-head">
+        <button class="back" id="backFromActivity">‹</button>
+        <div class="page-title">Activity</div>
+        <div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Posted</div>
+          <button class="link">Filters</button>
+        </div>
+        <div id="activityFullList" class="list big"></div>
+      </div>
+    </section>
+
+    <!-- CARDS -->
+    <section id="view-cards" class="view hidden">
+      <div class="page-head">
+        <button class="back" id="backFromCards">‹</button>
+        <div class="page-title">My Cards</div>
+        <div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Active cards</div>
+        <div id="cardsFullList" class="list big"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Create virtual card</div>
+
+        <div class="form">
+          <label>Configuration group ID</label>
+          <input id="cfgGroupId" placeholder="ccg_..." />
+
+          <label>Account ID (will be auto-filled with Account A)</label>
+          <input id="cardAccountId" placeholder="lacc_..." />
+
+          <label>Card nickname (optional)</label>
+          <input id="cardNickname" placeholder="e.g. Expenses card" />
+
+          <div class="row">
+            <button class="primary" id="btnCreateCard">Create card</button>
+            <button class="ghost" id="btnReloadCards">Reload</button>
+          </div>
+
+          <div class="hint">
+            Tip: To appear in the list, the card must be created via API. This form creates a <b>virtual</b> card.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEND MONEY -->
+    <section id="view-send" class="view hidden">
+      <div class="page-head">
+        <button class="back" id="backFromSend">‹</button>
+        <div class="page-title">Confirm the details</div>
+        <div></div>
+      </div>
+
+      <div class="send-layout">
+        <div class="send-card">
+          <div class="send-amount" id="confirmAmount">$ 0</div>
+          <div class="send-sub">To <span id="recipientLabel">Account B</span></div>
+          <div class="recipient-pill">
+            <div class="flag">🇨🇴</div>
+            <div class="pill-text" id="recipientMask">••••</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <label>Amount (COP)</label>
+          <input id="sendAmountInput" type="number" min="1" placeholder="10000" />
+
+          <label>Message</label>
+          <input id="sendMessageInput" placeholder="Message (optional)" />
+
+          <label>Receiving account (Account B)</label>
+          <input id="sendToAccountInput" placeholder="lacc_..." />
+
+          <div class="row">
+            <button class="primary wide" id="btnSendNow">Send money</button>
+          </div>
+          <button class="link danger" id="btnCancelSend">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOAST -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- RECEIPT MODAL -->
+    <div id="modalOverlay" class="modal-overlay hidden">
+      <div class="modal">
+        <button class="modal-close" id="modalClose">×</button>
+
+        <div class="modal-top">
+          <div class="modal-amount" id="receiptAmount">COP $ -0</div>
+          <div class="modal-date" id="receiptDate">—</div>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section-title">Message</div>
+          <div class="modal-value" id="receiptMessage">—</div>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section-title">Recipient details</div>
+          <div class="kv">
+            <div class="k">Account</div>
+            <div class="v" id="receiptAccount">—</div>
+          </div>
+          <div class="kv">
+            <div class="k">Currency</div>
+            <div class="v">COP</div>
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section-title">Transaction details</div>
+          <div class="kv">
+            <div class="k">Transaction ID</div>
+            <div class="v mono" id="receiptTxId">—</div>
+          </div>
+          <div class="kv">
+            <div class="k">Status</div>
+            <div class="v status success" id="receiptStatus">Success</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
