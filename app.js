@@ -444,15 +444,19 @@ function refreshConfirmCard() {
   const amt = Number($("#sendAmountInput")?.value || DEFAULT_SEND);
 
   const sel = $("#recipientSelect");
-  const selectedAcc = sel?.value?.trim() || $("#sendToAccountInput")?.value?.trim() || ACCOUNT_B;
+  const selectedAcc = sel?.value?.trim() || ACCOUNT_B;
 
+  // buscar de la lista el nombre del destinatario
   const recipients = getRecipients();
   const found = recipients.find(r => r.account_id === selectedAcc);
   const displayName = found?.name || "Recipient";
 
-  const inputAcc = $("#sendToAccountInput");
-  if (inputAcc) inputAcc.value = selectedAcc;
+  // ✅ ESTA ES LA PARTE CLAVE:
+  // guardar el account_id en el input hidden (para usarlo al enviar)
+  const hiddenAcc = $("#sendToAccountInput");
+  if (hiddenAcc) hiddenAcc.value = selectedAcc;
 
+  // actualizar UI de confirmación
   $("#confirmAmount").textContent = formatCOP(amt, 0);
   $("#recipientMask").textContent = maskId(selectedAcc, "recipient");
   $("#recipientLabel").textContent = displayName;
@@ -686,18 +690,18 @@ window.addEventListener("load", async () => {
   $("#recipientSelect").addEventListener("change", refreshConfirmCard);
 
   $("#btnSaveRecipient").addEventListener("click", () => {
-    try {
-      const name = $("#recipientNameInput").value;
-      const acc = $("#sendToAccountInput").value;
-      const saved = upsertRecipient(name, acc);
-      populateRecipientSelect(saved.account_id);
-      $("#recipientNameInput").value = "";
-      toast("Recipient saved");
-      refreshConfirmCard();
-    } catch (e) {
-      toast(e.message);
-    }
-  });
+  try {
+    const name = $("#recipientNameInput").value;
+    const acc = $("#recipientSelect").value; // <- usar el seleccionado
+    const saved = upsertRecipient(name, acc);
+    populateRecipientSelect(saved.account_id);
+    $("#recipientNameInput").value = "";
+    toast("Recipient saved");
+    refreshConfirmCard();
+  } catch (e) {
+    toast(e.message);
+  }
+});
 
   $("#btnSendNow").addEventListener("click", () => sendMoney().catch(e => toast(e.message)));
 
@@ -714,4 +718,5 @@ window.addEventListener("load", async () => {
     toast(e.message);
   }
 });
+
 
