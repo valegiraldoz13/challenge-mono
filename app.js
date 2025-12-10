@@ -1,15 +1,21 @@
 // ====== CONFIG ======
 const USER_NAME = "Valentina";
 
-// true = UI demo (saldo/tarjetas/movimientos “realistas”)
-// pero Transfer/Topup/Create Card se ejecutan contra API real.
+// UI demo realista (saldo/tarjetas/movimientos),
+// pero Transfer/Topup/Create Card siguen siendo reales contra API.
 const DEMO_UI = true;
 
-const ACCOUNT_A = "lacc_031q0qwVGDHDmuwSnczysf"; // payer (con saldo)
-const ACCOUNT_B = "lacc_031ptmr1teoDl643nvdBQk"; // receiving
+const ACCOUNT_A = "lacc_031q0qwVGDHDmuwSnczysf";
+const ACCOUNT_B = "lacc_031ptmr1teoDl643nvdBQk";
 
-const DEFAULT_TOPUP = 50000; // COP
-const DEFAULT_SEND  = 10000; // COP
+const DEFAULT_TOPUP = 50000;
+const DEFAULT_SEND  = 10000;
+
+// Card programs (dropdown)
+const CARD_PROGRAMS = [
+  { id: "ccg_02zKnMXeCB3eYDFHxTHe9j", label: "Sandbox default program" },
+  { id: "custom", label: "Custom (paste ccg_...)" }
+];
 
 // ====== Helpers ======
 const $ = (sel) => document.querySelector(sel);
@@ -30,13 +36,11 @@ function setView(name) {
   }
 }
 
-// Always numeric last4 (persistent)
 function getNumericLast4(key, fallback = "9780") {
   const k = `mono_last4_${key}`;
   const saved = localStorage.getItem(k);
   if (saved) return saved;
-
-  const n = String(Math.floor(1000 + Math.random() * 9000)); // 4 digits
+  const n = String(Math.floor(1000 + Math.random() * 9000));
   localStorage.setItem(k, n);
   return n || fallback;
 }
@@ -54,6 +58,10 @@ function formatCOP(amount, decimals = 0) {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals
   }).format(n);
+}
+
+function formatCOP2(amount){
+  return formatCOP(amount, 2);
 }
 
 async function api(action, { method="GET", body=null, qs=null } = {}) {
@@ -83,7 +91,7 @@ const LOCAL_KEY = "mono_demo_activity";
 function pushLocalActivity(item) {
   const list = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
   list.unshift(item);
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(list.slice(0, 50)));
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(list.slice(0, 80)));
 }
 function getLocalActivity() {
   return JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
@@ -95,7 +103,6 @@ function seedDemoDataOnce() {
   if (!DEMO_UI) return;
   if (localStorage.getItem(DEMO_SEED_KEY) === "1") return;
 
-  // Demo cards like screenshots
   const demoCards = [
     { id: "demo_car_1", type: "physical", state: "active", nickname: null, last_four: "2044", account_id: ACCOUNT_A },
     { id: "demo_car_2", type: "virtual",  state: "active", nickname: null, last_four: "2251", account_id: ACCOUNT_A },
@@ -103,7 +110,6 @@ function seedDemoDataOnce() {
   ];
   localStorage.setItem("mono_demo_cards", JSON.stringify(demoCards));
 
-  // Demo activity like screenshots
   const demoActivity = [
     {
       title: "Compra en SP+AFF* THERMCANADA",
@@ -155,14 +161,89 @@ function seedDemoDataOnce() {
     }
   ];
   localStorage.setItem("mono_demo_activity_seed", JSON.stringify(demoActivity));
-
-  // Demo balance pretty (persistent)
   localStorage.setItem("mono_demo_balance", String(328675.48));
-
-  // also force numeric mask for account
   getNumericLast4(ACCOUNT_A, "9780");
 
   localStorage.setItem(DEMO_SEED_KEY, "1");
+}
+
+// ====== Recipients (Saved contacts) ======
+const RECIPIENTS_KEY = "mono_saved_recipients";
+
+function getRecipients() {
+  const raw = localStorage.getItem(RECIPIENTS_KEY);
+  if (raw) return JSON.parse(raw);
+
+  const defaults = [
+    { id: "mom", name: "Mamá", account_id: ACCOUNT_B },
+    { id: "accb", name: "Account B", account_id: ACCOUNT_B },
+  ];
+  localStorage.setItem(RECIPIENTS_KEY, JSON.stringify(defaults));
+  return defaults;
+}
+
+function setRecipients(list) {
+  localStorage.setItem(RECIPIENTS_KEY, JSON.stringify(list));
+}
+
+function upsertRecipient(name, account_id) {
+  const list = getRecipients();
+  const cleanName = (name || "").trim() || "Recipient";
+  const cleanAcc = (account_id || "").trim();
+  if (!cleanAcc) throw new Error("Missing account_id to save recipient");
+
+  const existingIdx = list.findIndex(r => r.account_id === cleanAcc || r.name.toLowerCase() === cleanName.toLowerCase());
+  const item = { id: `r_${Date.now()}`, name: cleanName, account_id: cleanAcc };
+
+  if (existingIdx >= 0) list[existingIdx] = { ...list[existingIdx], ...item };
+  else list.unshift(item);
+
+  setRecipients(list.slice(0, 30));
+  return item;
+}
+
+function populateRecipientSelect(selectedAccountId = null) {
+  const sel = $("#recipientSelect");
+  if (!sel) return;
+
+  const recipients = getRecipients();
+  sel.innerHTML = "";
+
+  for (const r of recipients) {
+    const opt = document.createElement("option");
+    opt.value = r.account_id;
+    opt.textContent = `${r.name}  (${maskId(r.account_id, "recipient")})`;
+    sel.appendChild(opt);
+  }
+
+  const target = selectedAccountId || ACCOUNT_B;
+  sel.value = recipients.some(r => r.account_id === target) ? target : (recipients[0]?.account_id || ACCOUNT_B);
+}
+
+// ====== Cards program dropdown ======
+function setupCfgGroupSelect(){
+  const sel = $("#cfgGroupSelect");
+  if (!sel) return;
+
+  sel.innerHTML = "";
+  for (const p of CARD_PROGRAMS){
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.textContent = p.label;
+    sel.appendChild(opt);
+  }
+
+  sel.value = CARD_PROGRAMS[0]?.id || "custom";
+  toggleCustomCfgInput();
+}
+
+function toggleCustomCfgInput(){
+  const sel = $("#cfgGroupSelect");
+  const wrap = $("#cfgGroupCustomWrap");
+  if (!sel || !wrap) return;
+
+  const isCustom = sel.value === "custom";
+  wrap.classList.toggle("hidden", !isCustom);
 }
 
 // ====== Rendering ======
@@ -189,7 +270,7 @@ function renderCards(container, cards, limit=null) {
     const typeLabel = c.type ? (c.type[0].toUpperCase() + c.type.slice(1)) : "Card";
     const last4 = c.last_four ? `****${c.last_four}` : `****${getNumericLast4(c.id, "0000")}`;
     const title = `${typeLabel} ${last4}`;
-    const sub = `${c.nickname ? c.nickname : (typeLabel === "Physical" ? "Physical" : "Virtual")} • ${c.state || "active"}`;
+    const sub = `${typeLabel} • ${c.state || "active"}`;
 
     const el = document.createElement("div");
     el.className = "item";
@@ -207,6 +288,16 @@ function renderCards(container, cards, limit=null) {
   }
 }
 
+// Activity grouped by date + icons
+function dayKey(iso) {
+  const d = iso ? new Date(iso) : new Date();
+  return d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+}
+function timeOnly(iso) {
+  const d = iso ? new Date(iso) : new Date();
+  return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
 function renderActivity(container, rows, limit=null) {
   container.innerHTML = "";
   const list = Array.isArray(rows) ? rows : [];
@@ -214,42 +305,59 @@ function renderActivity(container, rows, limit=null) {
 
   if (shown.length === 0) {
     container.innerHTML = `
-      <div class="item">
-        <div class="item-left">
-          <div class="visa">—</div>
-          <div>
-            <div class="item-title">No activity yet</div>
-            <div class="item-sub">Send money / topup to generate operations</div>
-          </div>
-        </div>
+      <div style="padding:10px 0">
+        <div class="item-title">No activity yet</div>
+        <div class="item-sub">Send money / topup to generate operations</div>
       </div>`;
     return;
   }
 
+  const groups = new Map();
   for (const r of shown) {
-    const title = r.title || r.description || r.operation || r.operation_type || "Operation";
-    const sub = r.sub || r.kind || "Wallet";
-    const time = r.time || r.inserted_at || r.created_at || "";
-    const amount = Number(r.amount ?? r?.amount_obj?.amount ?? r?.amount?.amount ?? 0);
-    const sign = r.sign || (amount >= 0 ? "+" : "-");
-    const cls = sign === "+" ? "positive" : "negative";
+    const iso = r.time || r.inserted_at || r.created_at || "";
+    const key = dayKey(iso);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(r);
+  }
 
-    const el = document.createElement("div");
-    el.className = "item";
-    el.innerHTML = `
-      <div class="item-left">
-        <div class="visa">${r.badge || " "}</div>
-        <div>
-          <div class="item-title">${title}</div>
-          <div class="item-sub">${sub}</div>
+  for (const [key, items] of groups.entries()) {
+    const header = document.createElement("div");
+    header.className = "activity-day";
+    header.textContent = key;
+    container.appendChild(header);
+
+    for (const r of items) {
+      const title = r.title || r.description || r.operation || r.operation_type || "Operation";
+      const sub = r.sub || r.kind || "Wallet";
+      const iso = r.time || r.inserted_at || r.created_at || "";
+      const t = timeOnly(iso);
+
+      const amount = Number(r.amount ?? r?.amount_obj?.amount ?? r?.amount?.amount ?? 0);
+      const sign = r.sign || (amount >= 0 ? "+" : "-");
+      const cls = sign === "+" ? "positive" : "negative";
+
+      const isCard = (r.badge && r.badge.trim().toUpperCase() === "VISA") || sub.toLowerCase().includes("card");
+      const iconHTML = isCard
+        ? `<div class="act-visa">VISA</div>`
+        : `<div class="act-arrow">${sign === "+" ? "↙" : "↗"}</div>`;
+
+      const el = document.createElement("div");
+      el.className = "activity-row";
+      el.innerHTML = `
+        <div class="activity-left">
+          ${iconHTML}
+          <div class="activity-text">
+            <div class="activity-title">${title}</div>
+            <div class="activity-sub">${sub}</div>
+          </div>
         </div>
-      </div>
-      <div class="item-right">
-        <div class="amount ${cls}">${sign} ${formatCOP(Math.abs(amount), 2)}</div>
-        <div class="time">${time ? new Date(time).toLocaleString("es-CO") : ""}</div>
-      </div>
-    `;
-    container.appendChild(el);
+        <div class="activity-right">
+          <div class="activity-amount ${cls}">${sign} ${formatCOP2(Math.abs(amount))}</div>
+          <div class="activity-time">${t}</div>
+        </div>
+      `;
+      container.appendChild(el);
+    }
   }
 }
 
@@ -269,12 +377,12 @@ function normalizeOperation(op) {
 
   return {
     title: op.description || op.operation_type || op.operation || "Operation",
-    sub: op.operation_type ? "Wallet" : "Wallet",
+    sub: "Wallet",
     time: op.inserted_at || op.created_at || new Date().toISOString(),
     amount: Number(amt || 0),
     amount_obj: amountObj,
     sign,
-    badge: op.operation === "topup" ? " " : " ",
+    badge: " ",
     raw: op
   };
 }
@@ -282,17 +390,18 @@ function normalizeOperation(op) {
 // ====== Data loading ======
 async function loadDashboard() {
   seedDemoDataOnce();
+  setupCfgGroupSelect();
+  populateRecipientSelect($("#sendToAccountInput")?.value?.trim() || ACCOUNT_B);
 
   $("#helloText").textContent = `Hello, ${USER_NAME}!`;
   $("#accountMask").textContent = maskId(ACCOUNT_A, "accountA");
 
-  // Balance: DEMO UI uses pretty value, but still allow manual refresh via API if you want later
   if (DEMO_UI) {
     const demoBal = Number(localStorage.getItem("mono_demo_balance") || 328675.48);
-    $("#balanceAmount").textContent = formatCOP(demoBal, 2);
+    $("#balanceAmount").textContent = formatCOP2(demoBal);
   } else {
     const bal = await api("balance", { qs: { account_id: ACCOUNT_A } });
-    const available = bal?.available?.amount ?? bal?.available_amount ?? 0;
+    const available = bal?.available?.amount ?? 0;
     $("#balanceAmount").textContent = formatCOP(available, 0);
   }
 
@@ -307,20 +416,21 @@ async function loadDashboard() {
   }
   renderCards($("#cardsShortList"), cards, 3);
 
-  // Activity (demo seed + real ops saved locally from topup/transfer)
+  // Activity
   let activityRows = [];
   if (DEMO_UI) {
     const seed = JSON.parse(localStorage.getItem("mono_demo_activity_seed") || "[]");
     activityRows = [...getLocalActivity(), ...seed];
   } else {
-    activityRows = await loadActivityRows(ACCOUNT_A, 6);
+    activityRows = getLocalActivity();
   }
   renderActivity($("#activityShortList"), activityRows, 5);
 
-  // Autofill inputs
+  // Hidden account_id for card creation
   const cardAcc = $("#cardAccountId");
-  if (cardAcc && !cardAcc.value) cardAcc.value = ACCOUNT_A;
+  if (cardAcc) cardAcc.value = ACCOUNT_A;
 
+  // Autofill send defaults
   const sendTo = $("#sendToAccountInput");
   if (sendTo && !sendTo.value) sendTo.value = ACCOUNT_B;
 
@@ -330,15 +440,22 @@ async function loadDashboard() {
   refreshConfirmCard();
 }
 
-async function loadActivityRows(accountId, limit=30) {
-  // best effort from API
-  try {
-    const resp = await api("activity", { qs: { account_id: accountId, page_number: 1, page_size: limit } });
-    const rows = resp?.transactions || resp?.items || resp?.data || [];
-    const normalized = rows.map(x => normalizeOperation(x)).filter(Boolean);
-    if (normalized.length) return normalized;
-  } catch (_) {}
-  return getLocalActivity();
+function refreshConfirmCard() {
+  const amt = Number($("#sendAmountInput")?.value || DEFAULT_SEND);
+
+  const sel = $("#recipientSelect");
+  const selectedAcc = sel?.value?.trim() || $("#sendToAccountInput")?.value?.trim() || ACCOUNT_B;
+
+  const recipients = getRecipients();
+  const found = recipients.find(r => r.account_id === selectedAcc);
+  const displayName = found?.name || "Recipient";
+
+  const inputAcc = $("#sendToAccountInput");
+  if (inputAcc) inputAcc.value = selectedAcc;
+
+  $("#confirmAmount").textContent = formatCOP(amt, 0);
+  $("#recipientMask").textContent = maskId(selectedAcc, "recipient");
+  $("#recipientLabel").textContent = displayName;
 }
 
 // ====== Pages ======
@@ -349,7 +466,7 @@ async function openActivity() {
     const seed = JSON.parse(localStorage.getItem("mono_demo_activity_seed") || "[]");
     rows = [...getLocalActivity(), ...seed];
   } else {
-    rows = await loadActivityRows(ACCOUNT_A, 50);
+    rows = getLocalActivity();
   }
   renderActivity($("#activityFullList"), rows, null);
 }
@@ -367,20 +484,16 @@ async function openCards() {
   }
 
   renderCards($("#cardsFullList"), cards, null);
+
+  setupCfgGroupSelect();
+  const form = $("#createCardForm");
+  if (form) form.classList.add("hidden");
 }
 
 function openSend() {
   setView("send");
+  populateRecipientSelect($("#sendToAccountInput")?.value?.trim() || ACCOUNT_B);
   refreshConfirmCard();
-}
-
-function refreshConfirmCard() {
-  const amt = Number($("#sendAmountInput")?.value || DEFAULT_SEND);
-  const recv = $("#sendToAccountInput")?.value?.trim() || ACCOUNT_B;
-
-  $("#confirmAmount").textContent = formatCOP(amt, 0);
-  $("#recipientMask").textContent = maskId(recv, "recipient");
-  $("#recipientLabel").textContent = "Account B";
 }
 
 // ====== Real actions (API) ======
@@ -391,10 +504,8 @@ async function topupQuick() {
     body: { account_id: ACCOUNT_A, amount: DEFAULT_TOPUP, external_id }
   });
 
-  // Save as real operation in local activity
   pushLocalActivity(normalizeOperation(op));
 
-  // Update DEMO balance visually too (so it feels real)
   if (DEMO_UI) {
     const current = Number(localStorage.getItem("mono_demo_balance") || 0);
     localStorage.setItem("mono_demo_balance", String(current + DEFAULT_TOPUP));
@@ -404,15 +515,20 @@ async function topupQuick() {
   await loadDashboard();
 }
 
+function getSelectedCfgGroupId(){
+  const sel = $("#cfgGroupSelect");
+  if (!sel) return "";
+  if (sel.value === "custom") return ($("#cfgGroupCustom")?.value || "").trim();
+  return (sel.value || "").trim();
+}
+
 async function createCard() {
-  const configuration_group_id = $("#cfgGroupId").value.trim();
-  const account_id = $("#cardAccountId").value.trim();
-  const nickname = $("#cardNickname").value.trim();
+  const configuration_group_id = getSelectedCfgGroupId();
+  const account_id = ($("#cardAccountId")?.value || ACCOUNT_A).trim();
+  const nickname = ($("#cardNickname")?.value || "").trim();
 
-  if (!configuration_group_id) throw new Error("Missing configuration_group_id (ccg_...)");
-  if (!account_id) throw new Error("Missing account_id (lacc_...)");
+  if (!configuration_group_id) throw new Error("Please select a card program (ccg_...)");
 
-  // Demo cardholder (no datos reales)
   const rand = Math.floor(Math.random() * 1e6);
   const cardholder = {
     birthdate: "1997-04-13",
@@ -442,11 +558,9 @@ async function createCard() {
     body: { configuration_group_id, account_id, nickname, cardholder }
   });
 
-  // Invent last4 for UI and persist
   const createdId = created?.id || created?.card_id || `demo_${Date.now()}`;
   const last4 = getNumericLast4(createdId, "0000");
 
-  // In DEMO UI, we maintain a visual list and add the created card to it
   if (DEMO_UI) {
     const list = JSON.parse(localStorage.getItem("mono_demo_cards") || "[]");
     list.unshift({
@@ -473,7 +587,6 @@ async function sendMoney() {
 
   if (!amount || amount <= 0) throw new Error("Invalid amount");
   if (!receiving_account_id) throw new Error("Missing receiving account");
-  if (receiving_account_id === ACCOUNT_A) throw new Error("Receiving account must be different from payer (Account A)");
 
   const external_id = crypto.randomUUID();
 
@@ -488,10 +601,8 @@ async function sendMoney() {
     }
   });
 
-  // Save in local activity as real operation
   pushLocalActivity(normalizeOperation(op));
 
-  // Update demo balance visually too (so it feels real)
   if (DEMO_UI) {
     const current = Number(localStorage.getItem("mono_demo_balance") || 0);
     localStorage.setItem("mono_demo_balance", String(current - amount));
@@ -510,10 +621,14 @@ async function sendMoney() {
 }
 
 function openReceipt({ amount, message, account, txId, status }) {
-  // Show like screenshot: negative outflow
-  $("#receiptAmount").textContent = `COP ${formatCOP(-Math.abs(amount), 2).replace("COP", "$")}`.replace("--", "-");
-  $("#receiptDate").textContent = new Date().toLocaleString("es-CO");
+  const recipients = getRecipients();
+  const found = recipients.find(r => r.account_id === account);
+  const displayName = found?.name || "Recipient";
+
+  $("#receiptAmount").textContent = `COP ${formatCOP2(-Math.abs(amount))}`;
+  $("#receiptDate").textContent = new Date().toLocaleString("en-US");
   $("#receiptMessage").textContent = message || "—";
+  $("#receiptRecipientName").textContent = displayName;
   $("#receiptAccount").textContent = maskId(account, "recipient");
   $("#receiptTxId").textContent = txId;
   $("#receiptStatus").textContent = status || "Success";
@@ -543,11 +658,39 @@ window.addEventListener("load", async () => {
   $("#btnReloadCards").addEventListener("click", () => openCards().then(() => toast("Cards loaded")));
   $("#btnCreateCard").addEventListener("click", () => createCard().catch(e => toast(e.message)));
 
+  $("#btnToggleCreateCard").addEventListener("click", () => {
+    $("#createCardForm").classList.toggle("hidden");
+  });
+  $("#btnCancelCreateCard").addEventListener("click", () => {
+    $("#createCardForm").classList.add("hidden");
+  });
+
+  $("#cfgGroupSelect").addEventListener("change", () => {
+    toggleCustomCfgInput();
+  });
+
   // Send
   $("#backFromSend").addEventListener("click", async () => { setView("dashboard"); await loadDashboard(); });
   $("#btnCancelSend").addEventListener("click", async () => { setView("dashboard"); await loadDashboard(); });
   $("#sendAmountInput").addEventListener("input", refreshConfirmCard);
   $("#sendToAccountInput").addEventListener("input", refreshConfirmCard);
+
+  $("#recipientSelect").addEventListener("change", refreshConfirmCard);
+
+  $("#btnSaveRecipient").addEventListener("click", () => {
+    try {
+      const name = $("#recipientNameInput").value;
+      const acc = $("#sendToAccountInput").value;
+      const saved = upsertRecipient(name, acc);
+      populateRecipientSelect(saved.account_id);
+      $("#recipientNameInput").value = "";
+      toast("Recipient saved");
+      refreshConfirmCard();
+    } catch (e) {
+      toast(e.message);
+    }
+  });
+
   $("#btnSendNow").addEventListener("click", () => sendMoney().catch(e => toast(e.message)));
 
   // Modal
